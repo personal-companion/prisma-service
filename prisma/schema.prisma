@@ -1,0 +1,394 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource postgres {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// USER
+
+enum UserType {
+  ADMIN
+  USER
+}
+
+model User {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  username     String   @unique
+  email        String   @unique
+  firstName    String
+  lastName     String
+  birthday     DateTime
+  phone        String   @unique
+  profileImage String?
+  userType     UserType
+
+  homeId     String?
+  Home       Home?        @relation(fields: [homeId], references: [id])
+  Income     Income[]
+  Pocket     Pocket[]
+  Debt       Debt[]
+  CreditCard CreditCard[]
+}
+
+// HOME
+
+model Home {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name String
+
+  members User[]
+  HomePet HomePet[]
+  Bill    Bill[]
+}
+
+// PETS
+
+model Pet {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name     String
+  birthday DateTime
+  breed    String
+
+  homePetId          String?
+  walkerAttendanceId String?
+  petFoodDurationId  String?
+  petControlId       String?
+  HomePet            HomePet?          @relation(fields: [homePetId], references: [id])
+  WalkerAttendance   WalkerAttendance? @relation(fields: [walkerAttendanceId], references: [id])
+  PetFoodDuration    PetFoodDuration?  @relation(fields: [petFoodDurationId], references: [id])
+  PetControl         PetControl?       @relation(fields: [petControlId], references: [id])
+}
+
+model HomePet {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  homeId String
+  home   Home   @relation(fields: [homeId], references: [id])
+  pets   Pet[]
+}
+
+model WalkerAttendance {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @updatedAt
+
+  day      DateTime @default(now())
+  attended Boolean
+
+  pets Pet[]
+}
+
+model PetFood {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brand    String
+  size     Int
+  cost     Int
+  duration Int
+
+  PetFoodDuration PetFoodDuration[]
+
+  @@unique([brand, size])
+}
+
+model PetFoodDuration {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @updatedAt
+
+  boughtAt   DateTime @default(now())
+  finishesAt DateTime
+
+  petFoodId String
+  pets      Pet[]
+  petFood   PetFood @relation(fields: [petFoodId], references: [id])
+}
+
+enum PetControlType {
+  SYMPTOM
+  VACCINE
+  TREATMENT
+  MEDICINE
+  DEWORMER
+}
+
+model PetControl {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @updatedAt
+
+  dayReported DateTime       @default(now())
+  type        PetControlType
+  duration    Int
+  frequency   Int
+
+  pets Pet[]
+}
+
+// INCOME
+
+model Income {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name      String
+  amount    Int
+  frequency Int
+
+  userId         String
+  owner          User             @relation(fields: [userId], references: [id])
+  MonthlyIncome  MonthlyIncome[]
+  PocketMovement PocketMovement[]
+}
+
+model MonthlyIncome {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @updatedAt
+
+  month DateTime @default(now())
+
+  incomeId String
+  income   Income @relation(fields: [incomeId], references: [id])
+}
+
+// BILL
+
+enum BillCategory {
+  PET
+  HOME
+  PERSONAL
+  CAR
+  TAX
+}
+
+model Bill {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name             String
+  frequency        Int
+  amount           Int
+  payDay           DateTime
+  notificationDays Int
+  category         BillCategory
+
+  homeId         String
+  home           Home             @relation(fields: [homeId], references: [id])
+  MonthlyBill    MonthlyBill[]
+  Pocket         Pocket?          @relation(fields: [pocketId], references: [id])
+  pocketId       String?
+  PocketMovement PocketMovement[]
+  PayedBill      PayedBill[]
+}
+
+model MonthlyBill {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @updatedAt
+
+  month DateTime @default(now())
+
+  billId String
+  bill   Bill   @relation(fields: [billId], references: [id])
+}
+
+enum BillStatus {
+  PAYED
+  PARTIAL
+  PENDING
+  CRITICAL
+}
+
+model PayedBill {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @updatedAt
+
+  payedAt DateTime   @default(now())
+  status  BillStatus
+
+  billId String
+  bill   Bill   @relation(fields: [billId], references: [id])
+}
+
+// POCKET
+
+model Pocket {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name String @unique
+
+  ownerId        String
+  owner          User             @relation(fields: [ownerId], references: [id])
+  bills          Bill[]
+  PocketMovement PocketMovement[]
+  Movement       Movement[]
+}
+
+enum PocketMovementType {
+  WIDTHDRAWAL
+  DEPOSIT
+}
+
+model PocketMovement {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @updatedAt
+
+  type         PocketMovementType
+  movementDate DateTime           @default(now())
+  amount       Int
+
+  pocketId String
+  incomeId String?
+  billId   String?
+  pocket   Pocket  @relation(fields: [pocketId], references: [id])
+  income   Income? @relation(fields: [incomeId], references: [id])
+  bill     Bill?   @relation(fields: [billId], references: [id])
+}
+
+// MOVEMENT
+
+enum MovementType {
+  TRANSFER
+  PAYMENT
+  POCKET
+  RECHARGE
+}
+
+model Movement {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @updatedAt
+
+  date        DateTime     @default(now())
+  amount      Int
+  receipt     String // Comprobante imagen
+  description String?
+  type        MovementType
+
+  pocketId String?
+  pocket   Pocket? @relation(fields: [pocketId], references: [id])
+}
+
+// DEBT
+
+enum DebtType {
+  REAL
+  SIMULATED
+}
+
+enum DebtCategory {
+  CAR
+  HOUSE
+  FREE
+}
+
+model Debt {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name      String
+  number    String
+  entity    String
+  amount    Int
+  tax       Decimal
+  term      Int
+  payedDues Int
+  feeValue  Int
+  category  DebtCategory
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+}
+
+// CREDIT CARD
+
+model CreditCard {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name      String
+  number    String
+  entity    String
+  franchise String
+  quota     Int
+
+  ownerId            String
+  owner              User                 @relation(fields: [ownerId], references: [id])
+  CreditCardMovement CreditCardMovement[]
+}
+
+enum CreditCardMovementType {
+  PAYMENT
+  EXPENSE
+}
+
+model CreditCardMovement {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @updatedAt
+
+  date   DateTime               @default(now())
+  type   CreditCardMovementType
+  amount Int
+  dues   Int
+  tax    Decimal?
+
+  cardId String
+  card   CreditCard @relation(fields: [cardId], references: [id])
+}
+
+// PRODUCT
+
+enum ProductType {
+  GROCERY
+  TECHNOLOGY
+  TIDINESS
+  PET
+}
+
+model Product {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name             String
+  size             Int
+  unit             String
+  image            String?
+  brand            String
+  price            Int
+  type             ProductType
+  averageDuration  Int
+  notificationTime Int
+
+  shoppingId String?
+  Shopping   Shopping? @relation(fields: [shoppingId], references: [id])
+}
+
+// SHOPPING
+
+model Shopping {
+  id        String   @id @default(uuid())
+  updatedAt DateTime @updatedAt
+
+  date DateTime @default(now())
+
+  products Product[]
+}
