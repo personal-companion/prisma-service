@@ -1,5 +1,5 @@
 {
-  "name": "@personal-companion-server/prisma-service",
+  "name": "@personal-companion/prisma-service",
   "version": "1.0.0",
   "description": "Prisma service for personal companion server",
   "main": "index.js",
